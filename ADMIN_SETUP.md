@@ -69,3 +69,46 @@ Para desarrollo y pruebas, puedes crear un usuario administrador con:
 - Contraseña: Una contraseña segura de tu elección
 
 Luego, sigue los pasos del Método 1 para convertirlo en administrador.
+
+---
+
+## IMPORTANTE: Esquema para Proyecto Escolar
+
+Este proyecto incluye un esquema adicional para cumplir con los requisitos académicos.
+
+### Archivos Clave:
+
+1. **DOCUMENTACION_COMPLETA.md** - Contiene:
+   - 3 Procedimientos almacenados
+   - 3 Vistas
+   - 5 Consultas SQL con álgebra relacional
+   - 2 Triggers (BEFORE y AFTER)
+   - Toda la documentación requerida
+
+2. **db/zootopia.sql** - Esquema MySQL original
+
+3. **database_schema.sql** - Esquema PostgreSQL con 30 registros
+
+### Para Obtener Capturas de Pantalla:
+
+Ejecuta en Supabase SQL Editor:
+
+```sql
+-- Ver todas las tablas (30 registros cada una)
+SELECT * FROM pais;
+SELECT * FROM especie;
+SELECT * FROM ejemplar;
+SELECT * FROM fichaTecnica;
+SELECT * FROM usuario;
+
+-- Ejecutar procedimientos
+SELECT * FROM obtener_especies_por_estado_conservacion('Vulnerable');
+SELECT * FROM calcular_estadisticas_zoo();
+
+-- Ver vistas
+SELECT * FROM vista_especies_completa;
+SELECT * FROM vista_ejemplares_detalle;
+SELECT * FROM vista_estadisticas_regiones;
+```
+
+Consulta el archivo **DOCUMENTACION_COMPLETA.md** para todos los detalles.
