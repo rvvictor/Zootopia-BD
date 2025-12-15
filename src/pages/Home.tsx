@@ -19,7 +19,7 @@ export const Home: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-2xl p-8">
+          <div className="bg-white rounded-3xl shadow-2xl p-2 md:p-4 overflow-x-auto">
             <WorldMap />
           </div>
 

@@ -118,7 +118,7 @@ export const SpeciesDetail: React.FC = () => {
         </button>
 
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden mb-8">
-          <div className="aspect-[21/9] bg-gradient-to-br from-emerald-100 to-teal-100 relative">
+          <div className="min-h-[400px] md:min-h-[500px] bg-gradient-to-br from-emerald-100 to-teal-100 relative flex items-center justify-center">
             {species.imagen_url ? (
               <img
                 src={species.imagen_url}
