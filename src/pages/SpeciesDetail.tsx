@@ -249,9 +249,8 @@ export const SpeciesDetail: React.FC = () => {
                   <h3 className="text-xl font-bold text-gray-800 mb-2">{specimen.nombre}</h3>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">{specimen.sexo}</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      specimen.estado_salud === 'Saludable' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${specimen.estado_salud === 'Saludable' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                      }`}>
                       {specimen.estado_salud}
                     </span>
                   </div>

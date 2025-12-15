@@ -69,7 +69,7 @@ export const SpecimenForm: React.FC = () => {
         setFormData({
           nombre: data.nombre || '',
           especie_id: data.especie_id || '',
-          sexo: data.sexo || '',
+          sexo: data.sexo === 'M' ? 'Macho' : data.sexo === 'F' ? 'Hembra' : '',
           fecha_nacimiento: data.fecha_nacimiento || '',
           fecha_ingreso: data.fecha_ingreso || '',
           habitat_actual: data.habitat_actual || '',
@@ -88,17 +88,23 @@ export const SpecimenForm: React.FC = () => {
     setLoading(true);
 
     try {
+      // Convertir sexo de "Macho"/"Hembra" a "M"/"F"
+      const dataToSave = {
+        ...formData,
+        sexo: formData.sexo === 'Macho' ? 'M' : formData.sexo === 'Hembra' ? 'F' : formData.sexo
+      };
+
       if (specimenId) {
         const { error } = await supabase
           .from('ejemplares')
-          .update({ ...formData, updated_at: new Date().toISOString() })
+          .update(dataToSave)
           .eq('id', specimenId);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('ejemplares')
-          .insert([formData]);
+          .insert([dataToSave]);
 
         if (error) throw error;
       }

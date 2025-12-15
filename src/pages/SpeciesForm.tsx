@@ -111,7 +111,7 @@ export const SpeciesForm: React.FC = () => {
       if (speciesId) {
         const { error } = await supabase
           .from('especies')
-          .update({ ...formData, updated_at: new Date().toISOString() })
+          .update(formData)
           .eq('id', speciesId);
 
         if (error) throw error;

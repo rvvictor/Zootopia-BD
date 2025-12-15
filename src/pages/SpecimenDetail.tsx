@@ -132,14 +132,12 @@ export const SpecimenDetail: React.FC = () => {
               <div className="mb-6">
                 <h1 className="text-4xl font-bold text-gray-800 mb-2">{specimen.nombre}</h1>
                 <div className="flex gap-3 mb-4">
-                  <span className={`px-4 py-2 rounded-full font-semibold ${
-                    specimen.sexo === 'Macho' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'
-                  }`}>
+                  <span className={`px-4 py-2 rounded-full font-semibold ${specimen.sexo === 'Macho' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'
+                    }`}>
                     {specimen.sexo}
                   </span>
-                  <span className={`px-4 py-2 rounded-full font-semibold ${
-                    specimen.estado_salud === 'Saludable' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                  }`}>
+                  <span className={`px-4 py-2 rounded-full font-semibold ${specimen.estado_salud === 'Saludable' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }`}>
                     {specimen.estado_salud}
                   </span>
                 </div>

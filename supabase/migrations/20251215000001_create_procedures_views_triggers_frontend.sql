@@ -1,10 +1,13 @@
 /*
-  # Procedimientos Almacenados, Vistas y Triggers
+  # Procedimientos Almacenados, Vistas y Triggers - Compatible con Frontend
   
   ## Contenido
   1. Tres Procedimientos Almacenados (FUNCTIONS en PostgreSQL)
   2. Tres Vistas (VIEWS)
   3. Dos Triggers (BEFORE y AFTER)
+  
+  ## IMPORTANTE
+  Esta versión usa nombres snake_case para ser compatible con el esquema frontend.
   
   ## Procedimientos Almacenados
   
@@ -30,20 +33,16 @@
   
   ## Triggers
   
-  ### 1. BEFORE - validar_edad_ejemplar
+  ### 1. BEFORE - validar_fechas_ejemplar
   Valida que la fecha de nacimiento no sea futura
   
   ### 2. AFTER - registrar_auditoria_ejemplar
-  Registra cambios en la tabla ejemplar
+  Registra cambios en la tabla ejemplares
 */
 
 -- ============================================
 -- PROCEDIMIENTO 1: Obtener Especies por Estado de Conservación
 -- ============================================
--- Descripción: Obtiene todas las especies de un estado de conservación específico
--- con su información completa
--- Parámetros: nombre del estado de conservación
--- Retorna: Tabla con información de especies
 
 CREATE OR REPLACE FUNCTION obtener_especies_por_estado_conservacion(
   p_estado VARCHAR
@@ -61,30 +60,28 @@ RETURNS TABLE (
 BEGIN
   RETURN QUERY
   SELECT 
-    e.idEspecie,
-    e.nombreCientifico,
-    e.nombreComun,
-    t.nombreTipo,
-    p.nombrePais,
+    e.id,
+    e.nombre_cientifico,
+    e.nombre_comun,
+    t.nombre,
+    p.nombre,
     r.nombre as region_nombre,
-    ec.nombreEcosistema,
-    est.nombreConservacion
-  FROM especie e
-  INNER JOIN tipo t ON e.idTipo = t.idTipo
-  INNER JOIN pais p ON e.idPais = p.idPais
-  INNER JOIN region r ON p.idRegion = r.idRegion
-  INNER JOIN ecosistema ec ON e.idEcosistema = ec.idEcosistema
-  INNER JOIN estadoConservacion est ON e.idConservacion = est.idConservacion
-  WHERE est.nombreConservacion = p_estado
-  ORDER BY e.nombreComun;
+    ec.nombre,
+    est.nombre
+  FROM especies e
+  INNER JOIN tipos t ON e.tipo_id = t.id
+  INNER JOIN paises p ON e.pais_id = p.id
+  INNER JOIN regiones r ON p.region_id = r.id
+  INNER JOIN ecosistemas ec ON e.ecosistema_id = ec.id
+  INNER JOIN estados_conservacion est ON e.estado_conservacion_id = est.id
+  WHERE est.nombre = p_estado
+  ORDER BY e.nombre_comun;
 END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================
 -- PROCEDIMIENTO 2: Calcular Estadísticas del Zoo
 -- ============================================
--- Descripción: Calcula estadísticas generales del zoológico
--- Retorna: Total de especies, ejemplares, países y regiones
 
 CREATE OR REPLACE FUNCTION calcular_estadisticas_zoo()
 RETURNS TABLE (
@@ -98,21 +95,18 @@ RETURNS TABLE (
 BEGIN
   RETURN QUERY
   SELECT 
-    (SELECT COUNT(*) FROM especie)::BIGINT,
-    (SELECT COUNT(*) FROM ejemplar)::BIGINT,
-    (SELECT COUNT(*) FROM pais)::BIGINT,
-    (SELECT COUNT(*) FROM region)::BIGINT,
-    (SELECT COUNT(*) FROM ejemplar WHERE estadoSalud = 'Saludable')::BIGINT,
-    (SELECT COUNT(*) FROM ejemplar WHERE estadoSalud LIKE '%tratamiento%')::BIGINT;
+    (SELECT COUNT(*) FROM especies)::BIGINT,
+    (SELECT COUNT(*) FROM ejemplares)::BIGINT,
+    (SELECT COUNT(*) FROM paises)::BIGINT,
+    (SELECT COUNT(*) FROM regiones)::BIGINT,
+    (SELECT COUNT(*) FROM ejemplares WHERE estado_salud = 'Saludable')::BIGINT,
+    (SELECT COUNT(*) FROM ejemplares WHERE estado_salud LIKE '%tratamiento%')::BIGINT;
 END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================
 -- PROCEDIMIENTO 3: Registrar Nuevo Ejemplar con Auditoría
 -- ============================================
--- Descripción: Registra un nuevo ejemplar y crea automáticamente
--- una entrada en la tabla de auditoría
--- Parámetros: datos del ejemplar y ID del usuario que registra
 
 CREATE OR REPLACE FUNCTION registrar_nuevo_ejemplar(
   p_nombre VARCHAR,
@@ -120,8 +114,8 @@ CREATE OR REPLACE FUNCTION registrar_nuevo_ejemplar(
   p_fecha_nacimiento DATE,
   p_fecha_ingreso DATE,
   p_estado_salud VARCHAR,
-  p_id_especie INT,
-  p_id_usuario INT
+  p_especie_id INT,
+  p_usuario_id INT
 )
 RETURNS INT AS $$
 DECLARE
@@ -129,20 +123,20 @@ DECLARE
   v_nombre_especie VARCHAR;
 BEGIN
   -- Insertar el ejemplar
-  INSERT INTO ejemplar (nombre, sexo, fechaNacimiento, fechaIngreso, estadoSalud, idEspecie)
-  VALUES (p_nombre, p_sexo, p_fecha_nacimiento, p_fecha_ingreso, p_estado_salud, p_id_especie)
-  RETURNING idEjemplar INTO v_id_ejemplar;
+  INSERT INTO ejemplares (nombre, sexo, fecha_nacimiento, fecha_ingreso, estado_salud, especie_id)
+  VALUES (p_nombre, p_sexo, p_fecha_nacimiento, p_fecha_ingreso, p_estado_salud, p_especie_id)
+  RETURNING id INTO v_id_ejemplar;
   
   -- Obtener nombre de la especie
-  SELECT nombreComun INTO v_nombre_especie
-  FROM especie WHERE idEspecie = p_id_especie;
+  SELECT nombre_comun INTO v_nombre_especie
+  FROM especies WHERE id = p_especie_id;
   
   -- Registrar en auditoría
-  INSERT INTO auditoria (idUsuario, accion, tablaAfectada, descripcionAuditoria)
+  INSERT INTO auditorias (usuario_id, accion, tabla_afectada, descripcion)
   VALUES (
-    p_id_usuario,
+    p_usuario_id,
     'INSERT',
-    'ejemplar',
+    'ejemplares',
     'Nuevo ejemplar registrado: ' || p_nombre || ' de especie ' || v_nombre_especie
   );
   
@@ -153,106 +147,99 @@ $$ LANGUAGE plpgsql;
 -- ============================================
 -- VISTA 1: Vista Especies Completa
 -- ============================================
--- Descripción: Muestra información completa de todas las especies
--- incluyendo sus relaciones con otras tablas
 
 CREATE OR REPLACE VIEW vista_especies_completa AS
 SELECT 
-  e.idEspecie,
-  e.nombreCientifico,
-  e.nombreComun,
+  e.id,
+  e.nombre_cientifico,
+  e.nombre_comun,
   e.descripcion,
-  t.nombreTipo AS tipo,
-  p.nombrePais AS pais,
+  t.nombre AS tipo,
+  p.nombre AS pais,
   r.nombre AS region,
-  ec.nombreEcosistema AS ecosistema,
-  est.nombreConservacion AS estadoConservacion,
+  ec.nombre AS ecosistema,
+  est.nombre AS estado_conservacion,
   ft.habitat,
   ft.dieta,
   ft.reproduccion,
   ft.longevidad,
   ft.comportamiento,
-  (SELECT COUNT(*) FROM ejemplar WHERE idEspecie = e.idEspecie) AS total_ejemplares
-FROM especie e
-LEFT JOIN tipo t ON e.idTipo = t.idTipo
-LEFT JOIN pais p ON e.idPais = p.idPais
-LEFT JOIN region r ON p.idRegion = r.idRegion
-LEFT JOIN ecosistema ec ON e.idEcosistema = ec.idEcosistema
-LEFT JOIN estadoConservacion est ON e.idConservacion = est.idConservacion
-LEFT JOIN fichaTecnica ft ON e.idEspecie = ft.idEspecie
-ORDER BY e.nombreComun;
+  (SELECT COUNT(*) FROM ejemplares WHERE especie_id = e.id) AS total_ejemplares
+FROM especies e
+LEFT JOIN tipos t ON e.tipo_id = t.id
+LEFT JOIN paises p ON e.pais_id = p.id
+LEFT JOIN regiones r ON p.region_id = r.id
+LEFT JOIN ecosistemas ec ON e.ecosistema_id = ec.id
+LEFT JOIN estados_conservacion est ON e.estado_conservacion_id = est.id
+LEFT JOIN fichas_tecnicas ft ON e.id = ft.especie_id
+ORDER BY e.nombre_comun;
 
 -- ============================================
 -- VISTA 2: Vista Ejemplares Detalle
 -- ============================================
--- Descripción: Muestra información detallada de todos los ejemplares
--- junto con información de su especie
 
 CREATE OR REPLACE VIEW vista_ejemplares_detalle AS
 SELECT 
-  ej.idEjemplar,
+  ej.id,
   ej.nombre AS nombre_ejemplar,
   ej.sexo,
-  ej.fechaNacimiento,
-  ej.fechaIngreso,
-  EXTRACT(YEAR FROM AGE(CURRENT_DATE, ej.fechaNacimiento)) AS edad_años,
-  ej.estadoSalud,
-  e.nombreComun AS especie,
-  e.nombreCientifico,
-  t.nombreTipo AS tipo,
-  p.nombrePais AS pais_origen,
+  ej.fecha_nacimiento,
+  ej.fecha_ingreso,
+  EXTRACT(YEAR FROM AGE(CURRENT_DATE, ej.fecha_nacimiento)) AS edad_años,
+  ej.estado_salud,
+  e.nombre_comun AS especie,
+  e.nombre_cientifico,
+  t.nombre AS tipo,
+  p.nombre AS pais_origen,
   r.nombre AS region,
-  est.nombreConservacion AS estado_conservacion
-FROM ejemplar ej
-INNER JOIN especie e ON ej.idEspecie = e.idEspecie
-INNER JOIN tipo t ON e.idTipo = t.idTipo
-INNER JOIN pais p ON e.idPais = p.idPais
-INNER JOIN region r ON p.idRegion = r.idRegion
-INNER JOIN estadoConservacion est ON e.idConservacion = est.idConservacion
+  est.nombre AS estado_conservacion
+FROM ejemplares ej
+INNER JOIN especies e ON ej.especie_id = e.id
+INNER JOIN tipos t ON e.tipo_id = t.id
+INNER JOIN paises p ON e.pais_id = p.id
+INNER JOIN regiones r ON p.region_id = r.id
+INNER JOIN estados_conservacion est ON e.estado_conservacion_id = est.id
 ORDER BY ej.nombre;
 
 -- ============================================
 -- VISTA 3: Vista Estadísticas por Región
 -- ============================================
--- Descripción: Muestra estadísticas agrupadas por región geográfica
 
 CREATE OR REPLACE VIEW vista_estadisticas_regiones AS
 SELECT 
   r.nombre AS region,
-  COUNT(DISTINCT p.idPais) AS total_paises,
-  COUNT(DISTINCT e.idEspecie) AS total_especies,
-  COUNT(DISTINCT ej.idEjemplar) AS total_ejemplares,
-  COUNT(DISTINCT CASE WHEN est.nombreConservacion IN ('Crítico', 'En Peligro') 
-                 THEN e.idEspecie END) AS especies_en_peligro
-FROM region r
-LEFT JOIN pais p ON r.idRegion = p.idRegion
-LEFT JOIN especie e ON p.idPais = e.idPais
-LEFT JOIN ejemplar ej ON e.idEspecie = ej.idEspecie
-LEFT JOIN estadoConservacion est ON e.idConservacion = est.idConservacion
-GROUP BY r.idRegion, r.nombre
+  COUNT(DISTINCT p.id) AS total_paises,
+  COUNT(DISTINCT e.id) AS total_especies,
+  COUNT(DISTINCT ej.id) AS total_ejemplares,
+  COUNT(DISTINCT CASE WHEN est.nombre IN ('Crítico', 'En Peligro') 
+                 THEN e.id END) AS especies_en_peligro
+FROM regiones r
+LEFT JOIN paises p ON r.id = p.region_id
+LEFT JOIN especies e ON p.id = e.pais_id
+LEFT JOIN ejemplares ej ON e.id = ej.especie_id
+LEFT JOIN estados_conservacion est ON e.estado_conservacion_id = est.id
+GROUP BY r.id, r.nombre
 ORDER BY total_especies DESC;
 
 -- ============================================
--- TRIGGER 1: BEFORE INSERT - Validar Edad Ejemplar
+-- TRIGGER 1: BEFORE INSERT - Validar Fechas Ejemplar
 -- ============================================
--- Descripción: Valida que la fecha de nacimiento no sea futura
--- y que la fecha de ingreso no sea anterior a la de nacimiento
 
 CREATE OR REPLACE FUNCTION validar_fechas_ejemplar()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Validar que fecha de nacimiento no sea futura
-  IF NEW.fechaNacimiento > CURRENT_DATE THEN
+  IF NEW.fecha_nacimiento > CURRENT_DATE THEN
     RAISE EXCEPTION 'La fecha de nacimiento no puede ser futura';
   END IF;
   
   -- Validar que fecha de ingreso no sea anterior a fecha de nacimiento
-  IF NEW.fechaIngreso < NEW.fechaNacimiento THEN
+  IF NEW.fecha_ingreso < NEW.fecha_nacimiento THEN
     RAISE EXCEPTION 'La fecha de ingreso no puede ser anterior a la fecha de nacimiento';
   END IF;
   
   -- Si el ejemplar tiene más de 100 años, advertir (pero permitir)
-  IF EXTRACT(YEAR FROM AGE(CURRENT_DATE, NEW.fechaNacimiento)) > 100 THEN
+  IF EXTRACT(YEAR FROM AGE(CURRENT_DATE, NEW.fecha_nacimiento)) > 100 THEN
     RAISE WARNING 'El ejemplar tiene más de 100 años de edad';
   END IF;
   
@@ -261,15 +248,13 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_validar_fechas_ejemplar
-BEFORE INSERT OR UPDATE ON ejemplar
+BEFORE INSERT OR UPDATE ON ejemplares
 FOR EACH ROW
 EXECUTE FUNCTION validar_fechas_ejemplar();
 
 -- ============================================
 -- TRIGGER 2: AFTER INSERT/UPDATE/DELETE - Auditoría Ejemplar
 -- ============================================
--- Descripción: Registra automáticamente en la tabla de auditoría
--- cualquier cambio en la tabla ejemplar
 
 CREATE OR REPLACE FUNCTION registrar_auditoria_ejemplar()
 RETURNS TRIGGER AS $$
@@ -281,27 +266,27 @@ BEGIN
   -- Determinar la acción
   IF TG_OP = 'INSERT' THEN
     v_accion := 'INSERT';
-    SELECT nombreComun INTO v_nombre_especie
-    FROM especie WHERE idEspecie = NEW.idEspecie;
+    SELECT nombre_comun INTO v_nombre_especie
+    FROM especies WHERE id = NEW.especie_id;
     v_descripcion := 'Nuevo ejemplar: ' || NEW.nombre || 
                      ' (Especie: ' || v_nombre_especie || ')';
   ELSIF TG_OP = 'UPDATE' THEN
     v_accion := 'UPDATE';
-    SELECT nombreComun INTO v_nombre_especie
-    FROM especie WHERE idEspecie = NEW.idEspecie;
+    SELECT nombre_comun INTO v_nombre_especie
+    FROM especies WHERE id = NEW.especie_id;
     v_descripcion := 'Actualización ejemplar: ' || NEW.nombre || 
-                     ' (ID: ' || NEW.idEjemplar || ')';
+                     ' (ID: ' || NEW.id || ')';
   ELSIF TG_OP = 'DELETE' THEN
     v_accion := 'DELETE';
-    SELECT nombreComun INTO v_nombre_especie
-    FROM especie WHERE idEspecie = OLD.idEspecie;
+    SELECT nombre_comun INTO v_nombre_especie
+    FROM especies WHERE id = OLD.especie_id;
     v_descripcion := 'Eliminado ejemplar: ' || OLD.nombre || 
-                     ' (ID: ' || OLD.idEjemplar || ')';
+                     ' (ID: ' || OLD.id || ')';
   END IF;
   
-  -- Insertar en auditoría (sin idUsuario por ahora, se puede mejorar con session)
-  INSERT INTO auditoria (idUsuario, accion, tablaAfectada, descripcionAuditoria)
-  VALUES (NULL, v_accion, 'ejemplar', v_descripcion);
+  -- Insertar en auditoría (sin usuario_id por ahora, se puede mejorar con session)
+  INSERT INTO auditorias (usuario_id, accion, tabla_afectada, descripcion)
+  VALUES (NULL, v_accion, 'ejemplares', v_descripcion);
   
   IF TG_OP = 'DELETE' THEN
     RETURN OLD;
@@ -312,7 +297,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_auditoria_ejemplar
-AFTER INSERT OR UPDATE OR DELETE ON ejemplar
+AFTER INSERT OR UPDATE OR DELETE ON ejemplares
 FOR EACH ROW
 EXECUTE FUNCTION registrar_auditoria_ejemplar();
 

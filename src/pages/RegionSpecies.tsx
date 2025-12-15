@@ -80,7 +80,26 @@ export const RegionSpecies: React.FC = () => {
 
       if (error) throw error;
 
-      setEspecies(especiesData || []);
+      // Transform the data to match the Species interface
+      const transformedData = especiesData?.map((especie: any) => ({
+        id: especie.id,
+        nombre_comun: especie.nombre_comun,
+        nombre_cientifico: especie.nombre_cientifico,
+        imagen_url: especie.imagen_url,
+        tipo: Array.isArray(especie.tipo) ? especie.tipo[0] : especie.tipo,
+        pais: Array.isArray(especie.pais) ? especie.pais[0] : especie.pais,
+        ecosistema: Array.isArray(especie.ecosistema) ? especie.ecosistema[0] : especie.ecosistema,
+        estado_conservacion: Array.isArray(especie.estado_conservacion)
+          ? especie.estado_conservacion[0]
+          : especie.estado_conservacion,
+      })) || [];
+
+      setEspecies(transformedData);
+
+      // Filtrar países para mostrar solo los que tienen especies
+      const paisesConEspecies = paisesData?.filter(pais =>
+        transformedData.some(especie => especie.pais?.nombre === pais.nombre)
+      ) || [];
 
       const { data: tiposData } = await supabase
         .from('tipos')
@@ -94,7 +113,7 @@ export const RegionSpecies: React.FC = () => {
 
       setFilterOptions({
         tipos: tiposData || [],
-        paises: paisesData || [],
+        paises: paisesConEspecies,
         ecosistemas: ecosistemasData || [],
       });
     } catch (error) {

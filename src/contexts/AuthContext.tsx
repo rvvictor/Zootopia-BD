@@ -3,9 +3,10 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
 interface Profile {
-  id: string;
-  email: string;
-  role: 'admin' | 'user';
+  id: number;
+  correo: string;
+  rol_id: number;
+  role?: 'admin' | 'user';
 }
 
 interface AuthContextType {
@@ -32,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        loadProfile(session.user.id);
+        loadProfile(session.user.email!);
       } else {
         setLoading(false);
       }
@@ -43,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          await loadProfile(session.user.id);
+          await loadProfile(session.user.email!);
         } else {
           setProfile(null);
           setLoading(false);
@@ -54,16 +55,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadProfile = async (userId: string) => {
+  const loadProfile = async (email: string) => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
+        .from('usuarios')
+        .select('id, correo, rol_id')
+        .eq('correo', email)
         .maybeSingle();
 
       if (error) throw error;
-      setProfile(data);
+
+      console.log('📊 Profile data loaded:', data); // DEBUG
+
+      if (data) {
+        const profileData: Profile = {
+          id: data.id,
+          correo: data.correo,
+          rol_id: data.rol_id,
+          role: data.rol_id === 1 ? 'admin' : 'user' // 1 = admin, 2 = user
+        };
+        console.log('✅ Profile processed:', profileData); // DEBUG
+        setProfile(profileData);
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
@@ -77,8 +90,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
+    // Primero crear usuario en Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password
+    });
+    if (authError) throw authError;
+
+    // Luego crear registro en tabla usuarios
+    if (authData.user) {
+      try {
+        const { error: dbError } = await supabase
+          .from('usuarios')
+          .insert({
+            correo: email,
+            password: 'supabase_auth', // Placeholder, la auth real es por Supabase
+            rol_id: 2 // rol 'user' por defecto
+          });
+
+        if (dbError) {
+          console.error('Error creating user in usuarios:', dbError);
+          // No lanzar error aquí, el usuario ya está creado en auth
+        }
+      } catch (err) {
+        console.error('Failed to create user in usuarios table:', err);
+        // El usuario está en auth, solo falta en usuarios
+      }
+    }
   };
 
   const signOut = async () => {

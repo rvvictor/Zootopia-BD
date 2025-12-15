@@ -1,69 +1,93 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+} from 'react-simple-maps';
+import { Tooltip } from 'react-tooltip';
 
 interface Region {
   id: string;
   nombre: string;
 }
 
-interface MapRegion {
-  name: string;
-  path: string;
-  color: string;
-  labelX: number;
-  labelY: number;
+interface CountryWithSpecies {
+  countryName: string;
+  regionName: string;
+  hasSpecies: boolean;
 }
 
-const mapRegions: MapRegion[] = [
-  {
-    name: 'América del Norte',
-    path: 'M150,80 L180,75 L200,85 L220,75 L240,90 L250,110 L240,140 L220,160 L200,170 L180,165 L160,155 L150,140 L140,120 L135,100 Z',
-    color: '#8B7FDB',
-    labelX: 180,
-    labelY: 120,
-  },
-  {
-    name: 'América del Sur',
-    path: 'M220,180 L235,190 L245,210 L250,240 L245,270 L235,290 L220,300 L205,295 L195,280 L190,260 L195,240 L200,220 L210,200 L215,185 Z',
-    color: '#8B7FDB',
-    labelX: 220,
-    labelY: 250,
-  },
-  {
-    name: 'Europa',
-    path: 'M450,90 L480,85 L500,95 L510,110 L505,125 L495,135 L475,140 L460,135 L445,120 L440,105 Z',
-    color: '#5DD9C1',
-    labelX: 475,
-    labelY: 115,
-  },
-  {
-    name: 'África',
-    path: 'M450,150 L470,155 L490,165 L500,185 L505,210 L500,240 L485,265 L465,280 L445,275 L430,260 L425,235 L430,210 L435,185 L440,165 Z',
-    color: '#A8D08D',
-    labelX: 465,
-    labelY: 220,
-  },
-  {
-    name: 'Asia',
-    path: 'M520,70 L580,65 L640,75 L690,85 L720,100 L740,120 L745,145 L735,170 L715,185 L685,190 L655,185 L625,175 L595,165 L570,155 L545,145 L525,130 L515,110 L515,90 Z',
-    color: '#F4B184',
-    labelX: 640,
-    labelY: 130,
-  },
-  {
-    name: 'Australia',
-    path: 'M700,260 L730,255 L755,265 L765,280 L760,300 L745,310 L720,315 L695,310 L680,295 L675,275 Z',
-    color: '#5DD9C1',
-    labelX: 720,
-    labelY: 285,
-  },
-];
+// Mapa de continentes a nombres de regiones en la base de datos
+const continentToRegion: Record<string, string> = {
+  'North America': 'América del Norte',
+  'South America': 'América del Sur',
+  'Europe': 'Europa',
+  'Africa': 'África',
+  'Asia': 'Asia',
+  'Oceania': 'Australia',
+};
+
+// Mapeo de nombres de países en inglés (TopoJSON) a español (Base de datos)
+const countryNameMap: Record<string, string> = {
+  // África
+  'Kenya': 'Kenia',
+  'Tanzania': 'Tanzania',
+  'South Africa': 'Sudáfrica',
+  'Madagascar': 'Madagascar',
+
+  // América del Norte
+  'United States of America': 'Estados Unidos',
+  'Mexico': 'México',
+  'Canada': 'Canadá',
+
+  // América del Sur
+  'Brazil': 'Brasil',
+  'Argentina': 'Argentina',
+  'Chile': 'Chile',
+  'Peru': 'Perú',
+  'Colombia': 'Colombia',
+
+  // Asia
+  'China': 'China',
+  'India': 'India',
+  'Indonesia': 'Indonesia',
+  'Japan': 'Japón',
+  'Thailand': 'Tailandia',
+  'Vietnam': 'Vietnam',
+
+  // Europa
+  'Spain': 'España',
+  'France': 'Francia',
+  'Germany': 'Alemania',
+  'Italy': 'Italia',
+  'United Kingdom': 'Reino Unido',
+
+  // Australia/Oceanía
+  'Australia': 'Australia',
+  'New Zealand': 'Nueva Zelanda',
+};
+
+// Colores por continente
+const continentColors: Record<string, string> = {
+  'North America': '#8B7FDB',
+  'South America': '#A8D08D',
+  'Europe': '#5DD9C1',
+  'Africa': '#F4B184',
+  'Asia': '#FFD966',
+  'Oceania': '#9DC3E6',
+};
+
+// URL del archivo TopoJSON del mundo
+const geoUrl = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
 
 export const WorldMap: React.FC = () => {
   const navigate = useNavigate();
   const [regions, setRegions] = useState<Region[]>([]);
-  const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
+  const [hoveredGeo, setHoveredGeo] = useState<string>('');
+  const [tooltipContent, setTooltipContent] = useState<string>('');
+  const [countriesWithSpecies, setCountriesWithSpecies] = useState<Map<string, CountryWithSpecies>>(new Map());
 
   useEffect(() => {
     loadRegions();
@@ -71,112 +95,231 @@ export const WorldMap: React.FC = () => {
 
   const loadRegions = async () => {
     try {
-      const { data } = await supabase
+      // Obtener todas las regiones
+      const { data: regionData } = await supabase
         .from('regiones')
         .select('id, nombre')
         .order('nombre');
 
-      setRegions(data || []);
+      if (regionData) {
+        setRegions(regionData);
+
+        // Mapa de países con especies
+        const countriesMap = new Map<string, CountryWithSpecies>();
+
+        for (const region of regionData) {
+          // Obtener países de esta región
+          const { data: countries } = await supabase
+            .from('paises')
+            .select('id, nombre')
+            .eq('region_id', region.id);
+
+          if (countries && countries.length > 0) {
+
+            for (const country of countries) {
+              // Verificar si este país tiene especies
+              const { count } = await supabase
+                .from('especies')
+                .select('id', { count: 'exact', head: true })
+                .eq('pais_id', country.id);
+
+              // Guardar con el nombre exacto de la BD y también variaciones
+              const countryInfo = {
+                countryName: country.nombre,
+                regionName: region.nombre,
+                hasSpecies: (count && count > 0) || false,
+              };
+
+              // Guardar con nombre exacto
+              countriesMap.set(country.nombre, countryInfo);
+
+              // También guardar con nombre en minúsculas para matching flexible
+              countriesMap.set(country.nombre.toLowerCase(), countryInfo);
+
+
+            }
+          }
+        }
+
+        setCountriesWithSpecies(countriesMap);
+      }
     } catch (error) {
       console.error('Error loading regions:', error);
     }
   };
 
-  const handleRegionClick = (regionName: string) => {
-    const region = regions.find((r) => r.nombre === regionName);
-    if (region) {
-      navigate(`/region/${region.id}`);
+  const getRegionFromContinent = (continent: string): string | null => {
+    return continentToRegion[continent] || null;
+  };
+
+  const handleRegionClick = (continent: string) => {
+    const regionName = getRegionFromContinent(continent);
+    if (regionName) {
+      const region = regions.find((r) => r.nombre === regionName);
+      if (region) {
+        navigate(`/region/${region.id}`);
+      }
     }
   };
 
+  const getCountryContinent = (geo: any): string => {
+    const countryName = geo.properties.name;
+
+    // Mapeo de países a continentes
+    const northAmerica = ['United States of America', 'Canada', 'Mexico', 'Guatemala', 'Belize', 'Honduras', 'El Salvador', 'Nicaragua', 'Costa Rica', 'Panama', 'Cuba', 'Jamaica', 'Haiti', 'Dominican Republic', 'Bahamas', 'Trinidad and Tobago', 'Barbados', 'Greenland'];
+    const southAmerica = ['Brazil', 'Argentina', 'Chile', 'Colombia', 'Peru', 'Venezuela', 'Ecuador', 'Bolivia', 'Paraguay', 'Uruguay', 'Guyana', 'Suriname', 'French Guiana'];
+    const europe = ['Russia', 'Germany', 'United Kingdom', 'France', 'Italy', 'Spain', 'Ukraine', 'Poland', 'Romania', 'Netherlands', 'Belgium', 'Czech Republic', 'Greece', 'Portugal', 'Sweden', 'Hungary', 'Belarus', 'Austria', 'Serbia', 'Switzerland', 'Bulgaria', 'Denmark', 'Finland', 'Slovakia', 'Norway', 'Ireland', 'Croatia', 'Moldova', 'Bosnia and Herzegovina', 'Albania', 'Lithuania', 'Slovenia', 'Latvia', 'North Macedonia', 'Estonia', 'Luxembourg', 'Montenegro', 'Malta', 'Iceland', 'Andorra', 'Monaco', 'Liechtenstein', 'San Marino', 'Vatican'];
+    const africa = ['Nigeria', 'Ethiopia', 'Egypt', 'Democratic Republic of the Congo', 'Tanzania', 'South Africa', 'Kenya', 'Uganda', 'Algeria', 'Sudan', 'Morocco', 'Angola', 'Ghana', 'Mozambique', 'Madagascar', 'Cameroon', 'Ivory Coast', 'Niger', 'Burkina Faso', 'Mali', 'Malawi', 'Zambia', 'Somalia', 'Senegal', 'Chad', 'Zimbabwe', 'Guinea', 'Rwanda', 'Benin', 'Tunisia', 'Burundi', 'South Sudan', 'Togo', 'Sierra Leone', 'Libya', 'Liberia', 'Central African Republic', 'Mauritania', 'Eritrea', 'Gambia', 'Botswana', 'Namibia', 'Gabon', 'Lesotho', 'Guinea-Bissau', 'Equatorial Guinea', 'Mauritius', 'Eswatini', 'Djibouti', 'Comoros', 'Cape Verde', 'Sao Tome and Principe', 'Seychelles'];
+    const asia = ['China', 'India', 'Indonesia', 'Pakistan', 'Bangladesh', 'Japan', 'Philippines', 'Vietnam', 'Turkey', 'Iran', 'Thailand', 'Myanmar', 'South Korea', 'Iraq', 'Afghanistan', 'Saudi Arabia', 'Uzbekistan', 'Malaysia', 'Yemen', 'Nepal', 'North Korea', 'Sri Lanka', 'Kazakhstan', 'Syria', 'Cambodia', 'Jordan', 'Azerbaijan', 'Tajikistan', 'United Arab Emirates', 'Israel', 'Laos', 'Lebanon', 'Kyrgyzstan', 'Turkmenistan', 'Singapore', 'Oman', 'Palestine', 'Kuwait', 'Georgia', 'Mongolia', 'Armenia', 'Qatar', 'Bahrain', 'East Timor', 'Cyprus', 'Bhutan', 'Maldives', 'Brunei'];
+    const oceania = ['Australia', 'Papua New Guinea', 'New Zealand', 'Fiji', 'Solomon Islands', 'Micronesia', 'Vanuatu', 'Samoa', 'Kiribati', 'Tonga', 'Palau', 'Marshall Islands', 'Nauru', 'Tuvalu'];
+
+    if (northAmerica.includes(countryName)) return 'North America';
+    if (southAmerica.includes(countryName)) return 'South America';
+    if (europe.includes(countryName)) return 'Europe';
+    if (africa.includes(countryName)) return 'Africa';
+    if (asia.includes(countryName)) return 'Asia';
+    if (oceania.includes(countryName)) return 'Oceania';
+
+    return 'Other';
+  };
+
   return (
-    <div className="w-full max-w-6xl mx-auto px-4">
-      <svg
-        viewBox="0 0 900 400"
-        className="w-full h-auto"
-        style={{ filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.1))' }}
+    <div className="w-full max-w-7xl mx-auto px-4">
+      <div
+        className="bg-white rounded-3xl shadow-2xl p-4 md:p-8 overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%)',
+        }}
       >
-        <defs>
-          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path
-              d="M 40 0 L 0 0 0 40"
-              fill="none"
-              stroke="rgba(100,116,139,0.05)"
-              strokeWidth="1"
+        <ComposableMap
+          projection="geoMercator"
+          projectionConfig={{
+            scale: 140,
+            center: [0, 20],
+          }}
+          style={{
+            width: '100%',
+            height: 'auto',
+          }}
+        >
+          <Geographies geography={geoUrl}>
+            {({ geographies }: { geographies: any[] }) =>
+              geographies.map((geo) => {
+                const countryNameEnglish = geo.properties.name;
+                const continent = getCountryContinent(geo);
+                const regionName = getRegionFromContinent(continent);
+
+                // Traducir nombre del país de inglés a español
+                const countryNameSpanish = countryNameMap[countryNameEnglish] || countryNameEnglish;
+
+                // Verificar si este país tiene especies
+                let countryData = countriesWithSpecies.get(countryNameSpanish);
+                if (!countryData) {
+                  // Intentar con el nombre original en inglés
+                  countryData = countriesWithSpecies.get(countryNameEnglish);
+                }
+                if (!countryData) {
+                  // Intentar con lowercase
+                  countryData = countriesWithSpecies.get(countryNameSpanish.toLowerCase());
+                }
+
+                const hasSpecies = countryData?.hasSpecies || false;
+                const isClickable = hasSpecies && regionName !== null;
+
+                // Color: solo países con especies tienen color, otros son grises
+                const fillColor = hasSpecies ? (continentColors[continent] || '#E5E7EB') : '#E5E7EB';
+
+                // Nombre a mostrar en tooltip (usar el nombre de la BD si existe, sino el inglés)
+                const displayCountryName = countryData?.countryName || countryNameSpanish;
+
+                return (
+                  <Geography
+                    key={geo.rsmKey}
+                    geography={geo}
+                    fill={fillColor}
+                    stroke="#FFFFFF"
+                    strokeWidth={0.5}
+                    style={{
+                      default: {
+                        fill: fillColor,
+                        stroke: '#FFFFFF',
+                        strokeWidth: 0.5,
+                        outline: 'none',
+                      },
+                      hover: {
+                        fill: isClickable ? '#10b981' : fillColor,
+                        stroke: '#FFFFFF',
+                        strokeWidth: 1,
+                        outline: 'none',
+                        cursor: isClickable ? 'pointer' : 'default',
+                        filter: isClickable ? 'brightness(1.1)' : 'none',
+                      },
+                      pressed: {
+                        fill: isClickable ? '#059669' : fillColor,
+                        stroke: '#FFFFFF',
+                        strokeWidth: 1,
+                        outline: 'none',
+                      },
+                    }}
+                    onMouseEnter={() => {
+                      setHoveredGeo(geo.rsmKey);
+                      if (countryData && regionName) {
+                        // Mostrar "Región - País"
+                        setTooltipContent(`${regionName} - ${displayCountryName}`);
+                      } else if (regionName) {
+                        setTooltipContent(`${regionName} - ${displayCountryName}`);
+                      } else {
+                        setTooltipContent(displayCountryName);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredGeo('');
+                      setTooltipContent('');
+                    }}
+                    onClick={(e: React.MouseEvent<SVGPathElement>) => {
+                      e.preventDefault();
+                      if (isClickable && regionName) {
+                        handleRegionClick(continent);
+                      }
+                    }}
+                    data-tooltip-id="map-tooltip"
+                    data-tooltip-content={tooltipContent}
+                  />
+                );
+              })
+            }
+          </Geographies>
+        </ComposableMap>
+
+        <Tooltip
+          id="map-tooltip"
+          place="top"
+          style={{
+            backgroundColor: '#1f2937',
+            color: '#fff',
+            borderRadius: '8px',
+            padding: '8px 12px',
+            fontSize: '14px',
+            fontWeight: '600',
+            zIndex: 1000,
+          }}
+        />
+      </div>
+
+      {/* Leyenda */}
+      <div className="mt-6 flex flex-wrap justify-center gap-4">
+        {Object.entries(continentToRegion).map(([continent, regionName]) => (
+          <div key={continent} className="flex items-center gap-2">
+            <div
+              className="w-4 h-4 rounded"
+              style={{ backgroundColor: continentColors[continent] }}
             />
-          </pattern>
-        </defs>
-
-        <rect width="900" height="400" fill="#F8FAFC" />
-        <rect width="900" height="400" fill="url(#grid)" />
-
-        {mapRegions.map((region) => (
-          <g key={region.name}>
-            <path
-              d={region.path}
-              fill={region.color}
-              stroke="#FFFFFF"
-              strokeWidth="2"
-              className="cursor-pointer transition-all duration-300"
-              style={{
-                opacity: hoveredRegion === region.name ? 0.9 : 0.8,
-                transform:
-                  hoveredRegion === region.name ? 'scale(1.02)' : 'scale(1)',
-                transformOrigin: `${region.labelX}px ${region.labelY}px`,
-              }}
-              onMouseEnter={() => setHoveredRegion(region.name)}
-              onMouseLeave={() => setHoveredRegion(null)}
-              onClick={() => handleRegionClick(region.name)}
-            />
-
-            <g
-              className="cursor-pointer"
-              onClick={() => handleRegionClick(region.name)}
-              onMouseEnter={() => setHoveredRegion(region.name)}
-              onMouseLeave={() => setHoveredRegion(null)}
-            >
-              <rect
-                x={region.labelX - 80}
-                y={region.labelY - 20}
-                width="160"
-                height="40"
-                fill="#DC2626"
-                rx="6"
-                className="transition-all duration-300"
-                style={{
-                  opacity: hoveredRegion === region.name ? 1 : 0.95,
-                  transform:
-                    hoveredRegion === region.name ? 'scale(1.05)' : 'scale(1)',
-                  transformOrigin: `${region.labelX}px ${region.labelY}px`,
-                }}
-              />
-
-              <polygon
-                points={`${region.labelX - 15},${region.labelY + 20} ${
-                  region.labelX + 15
-                },${region.labelY + 20} ${region.labelX},${region.labelY + 35}`}
-                fill="#DC2626"
-                className="transition-all duration-300"
-                style={{
-                  opacity: hoveredRegion === region.name ? 1 : 0.95,
-                }}
-              />
-
-              <text
-                x={region.labelX}
-                y={region.labelY + 5}
-                textAnchor="middle"
-                fill="white"
-                fontSize="18"
-                fontWeight="bold"
-                className="pointer-events-none select-none"
-              >
-                {region.name}
-              </text>
-            </g>
-          </g>
+            <span className="text-sm font-medium text-gray-700">
+              {regionName}
+            </span>
+          </div>
         ))}
-      </svg>
+      </div>
     </div>
   );
 };

@@ -116,21 +116,19 @@ export const AdminPanel: React.FC = () => {
           <div className="flex gap-4 mb-8 border-b">
             <button
               onClick={() => setActiveTab('species')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'species'
-                  ? 'text-emerald-600 border-b-2 border-emerald-600'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
+              className={`px-6 py-3 font-semibold transition ${activeTab === 'species'
+                ? 'text-emerald-600 border-b-2 border-emerald-600'
+                : 'text-gray-600 hover:text-gray-800'
+                }`}
             >
               Especies
             </button>
             <button
               onClick={() => setActiveTab('specimens')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'specimens'
-                  ? 'text-emerald-600 border-b-2 border-emerald-600'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
+              className={`px-6 py-3 font-semibold transition ${activeTab === 'specimens'
+                ? 'text-emerald-600 border-b-2 border-emerald-600'
+                : 'text-gray-600 hover:text-gray-800'
+                }`}
             >
               Ejemplares
             </button>
@@ -222,9 +220,8 @@ export const AdminPanel: React.FC = () => {
                         <td className="px-6 py-4 text-gray-800 font-semibold">{ejemplar.nombre}</td>
                         <td className="px-6 py-4 text-gray-600">{ejemplar.especie?.nombre_comun}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                            ejemplar.sexo === 'Macho' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'
-                          }`}>
+                          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${ejemplar.sexo === 'Macho' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'
+                            }`}>
                             {ejemplar.sexo}
                           </span>
                         </td>
