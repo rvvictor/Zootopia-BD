@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ArrowLeft, MapPin, Leaf, Heart, Calendar, Activity, AlertTriangle } from 'lucide-react';
+import { Model3DViewer } from '../components/Model3DViewer';
 
 interface SpeciesDetail {
   id: string;
   nombre_comun: string;
   nombre_cientifico: string;
   imagen_url: string | null;
+  modelo_3d_url: string | null;
   habitat_natural: string;
   dieta: string;
   reproduccion: string;
@@ -48,6 +50,7 @@ export const SpeciesDetail: React.FC = () => {
           nombre_comun,
           nombre_cientifico,
           imagen_url,
+          modelo_3d_url,
           habitat_natural,
           dieta,
           reproduccion,
@@ -118,19 +121,13 @@ export const SpeciesDetail: React.FC = () => {
         </button>
 
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden mb-8">
-          <div className="min-h-[400px] md:min-h-[500px] bg-gradient-to-br from-emerald-100 to-teal-100 relative flex items-center justify-center">
-            {species.imagen_url ? (
-              <img
-                src={species.imagen_url}
-                alt={species.nombre_comun}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">
-                Sin imagen disponible
-              </div>
-            )}
-            <div className={`absolute top-6 right-6 ${getConservationColor(species.estado_conservacion?.codigo || '')} text-white px-6 py-3 rounded-full font-semibold shadow-lg`}>
+          <div className="min-h-[400px] md:min-h-[500px] bg-gradient-to-br from-emerald-100 to-teal-100 relative">
+            <Model3DViewer
+              modelUrl={species.modelo_3d_url}
+              fallbackImageUrl={species.imagen_url}
+              altText={species.nombre_comun}
+            />
+            <div className={`absolute top-6 right-6 ${getConservationColor(species.estado_conservacion?.codigo || '')} text-white px-6 py-3 rounded-full font-semibold shadow-lg z-10`}>
               {species.estado_conservacion?.nombre}
             </div>
           </div>
