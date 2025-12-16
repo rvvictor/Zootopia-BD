@@ -18,6 +18,7 @@ interface FormData {
   estado_conservacion_id: string;
   descripcion_general: string;
   imagen_url: string;
+  modelo_3d_url: string;
 }
 
 export const SpeciesForm: React.FC = () => {
@@ -43,6 +44,7 @@ export const SpeciesForm: React.FC = () => {
     estado_conservacion_id: '',
     descripcion_general: '',
     imagen_url: '',
+    modelo_3d_url: '',
   });
 
   useEffect(() => {
@@ -96,6 +98,7 @@ export const SpeciesForm: React.FC = () => {
           estado_conservacion_id: data.estado_conservacion_id || '',
           descripcion_general: data.descripcion_general || '',
           imagen_url: data.imagen_url || '',
+          modelo_3d_url: data.modelo_3d_url || '',
         });
       }
     } catch (error) {
@@ -259,6 +262,18 @@ export const SpeciesForm: React.FC = () => {
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 placeholder="https://example.com/image.jpg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">URL de Modelo 3D</label>
+              <input
+                type="url"
+                name="modelo_3d_url"
+                value={formData.modelo_3d_url}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="https://example.com/model.glb"
               />
             </div>
 

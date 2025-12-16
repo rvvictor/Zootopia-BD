@@ -1,3 +1,94 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    :root {
+        /* Wild Zoo Color Palette */
+        --color-jungle-dark: #1a4d2e;
+        --color-jungle-medium: #2d5016;
+        --color-jungle-light: #4f772d;
+        --color-earth-brown: #8b4513;
+        --color-sand: #d4a574;
+        --color-sunset-orange: #ff6b35;
+        --color-tropical-yellow: #f7b801;
+        --color-safari-tan: #c9a66b;
+
+        /* Typography - Jungle Vibes */
+        --font-heading: 'Alfa Slab One', cursive;
+        --font-body: 'Quicksand', sans-serif;
+    }
+
+    body {
+        font-family: var(--font-body);
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-family: var(--font-heading);
+        letter-spacing: 0.02em;
+    }
+}
+
+@layer utilities {
+    .text-shadow-wild {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .text-outline-wild {
+        -webkit-text-stroke: 3px #2d5016;
+        -webkit-text-fill-color: transparent;
+        paint-order: stroke fill;
+    }
+
+    .text-outline-gradient {
+        -webkit-text-stroke: 3px transparent;
+        -webkit-text-fill-color: transparent;
+        background: linear-gradient(to right, #1a4d2e, #4f772d, #8b4513);
+        -webkit-background-clip: text;
+        background-clip: text;
+        filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.3));
+    }
+
+    .bg-pattern-leaves {
+        background-image:
+            radial-gradient(circle at 20% 50%, rgba(79, 119, 45, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(45, 80, 22, 0.1) 0%, transparent 50%);
+    }
+
+    @keyframes float {
+
+        0%,
+        100% {
+            transform: translateY(0px);
+        }
+
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+
+    .animate-float {
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes sway {
+
+        0%,
+        100% {
+            transform: rotate(-2deg);
+        }
+
+        50% {
+            transform: rotate(2deg);
+        }
+    }
+
+    .animate-sway {
+        animation: sway 4s ease-in-out infinite;
+    }
+}
